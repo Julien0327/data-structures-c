@@ -1,127 +1,196 @@
-// // #include <stdio.h>
-// // #include <stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-// // #define MAX_SIZE 100
+#define MAX_CHAR 256   // ASCII 字符范围
 
-// // // ==================== 堆结构 ====================
-// // typedef struct {
-// //     int data[MAX_SIZE];
-// //     int size;              // 当前元素个数
-// // } MaxHeap;
+// ==========================
+// 哈夫曼树节点定义
+// ==========================
+typedef struct HuffmanNode {
+    unsigned char ch;          // 字符
+    int weight;                // 权值（出现次数）
+    struct HuffmanNode *left;  // 左子树
+    struct HuffmanNode *right; // 右子树
+} HuffmanNode;
 
-// // // ==================== 初始化堆 ====================
-// // void InitHeap(MaxHeap *H) {
-// //     H->size = 0;
-// // }
 
-// // // ==================== 判断是否为空/满 ====================
-// // int IsEmpty(MaxHeap H) {
-// //     return H.size == 0;
-// // }
+// ==========================
+// 最小堆（优先队列）
+// ==========================
+typedef struct {
+    HuffmanNode* data[MAX_CHAR];
+    int size;
+} MinHeap;
 
-// // int IsFull(MaxHeap H) {
-// //     return H.size == MAX_SIZE;
-// // }
+void swap(HuffmanNode** a, HuffmanNode** b) {
+    HuffmanNode* t = *a;
+    *a = *b;
+    *b = t;
+}
 
-// // // ==================== 上滤（插入时用） ====================
-// // void ShiftUp(MaxHeap *H, int idx) {
-// //     while (idx > 0) {
-// //         int parent = (idx - 1) / 2;
-// //         if (H->data[parent] < H->data[idx]) {
-// //             // 交换父节点与当前节点
-// //             int temp = H->data[parent];
-// //             H->data[parent] = H->data[idx];
-// //             H->data[idx] = temp;
+void heapifyUp(MinHeap* heap, int idx) {
+    int parent = (idx - 1) / 2;
+    while (idx > 0 && heap->data[idx]->weight < heap->data[parent]->weight) {
+        swap(&heap->data[idx], &heap->data[parent]);
+        idx = parent;
+        parent = (idx - 1) / 2;
+    }
+}
 
-// //             idx = parent;
-// //         } else {
-// //             break;
-// //         }
-// //     }
-// // }
+void heapifyDown(MinHeap* heap, int idx) {
+    int left, right, smallest;
+    while (1) {
+        left = 2 * idx + 1;
+        right = 2 * idx + 2;
+        smallest = idx;
 
-// // // ==================== 插入元素 ====================
-// // void Insert(MaxHeap *H, int value) {
-// //     if (IsFull(*H)) {
-// //         printf("Heap is full!\n");
-// //         return;
-// //     }
+        if (left < heap->size && heap->data[left]->weight < heap->data[smallest]->weight)
+            smallest = left;
+        if (right < heap->size && heap->data[right]->weight < heap->data[smallest]->weight)
+            smallest = right;
 
-// //     H->data[H->size] = value;   // 新元素放到末尾
-// //     ShiftUp(H, H->size);        // 上滤调整
-// //     H->size++;
-// // }
+        if (smallest == idx) break;
 
-// // // ==================== 下滤（删除堆顶时用） ====================
-// // void ShiftDown(MaxHeap *H, int idx) {
-// //     int left, right, largest;
+        swap(&heap->data[idx], &heap->data[smallest]);
+        idx = smallest;
+    }
+}
 
-// //     while (1) {
-// //         left = 2 * idx + 1;
-// //         right = 2 * idx + 2;
-// //         largest = idx;
+void heapPush(MinHeap* heap, HuffmanNode* node) {
+    heap->data[heap->size++] = node;
+    heapifyUp(heap, heap->size - 1);
+}
 
-// //         // 找到左右孩子中较大的
-// //         if (left < H->size && H->data[left] > H->data[largest]) {
-// //             largest = left;
-// //         }
-// //         if (right < H->size && H->data[right] > H->data[largest]) {
-// //             largest = right;
-// //         }
+HuffmanNode* heapPop(MinHeap* heap) {
+    if (heap->size == 0) return NULL;
+    HuffmanNode* root = heap->data[0];
+    heap->data[0] = heap->data[--heap->size];
+    heapifyDown(heap, 0);
+    return root;
+}
 
-// //         // 如果孩子比父亲大，交换
-// //         if (largest != idx) {
-// //             int temp = H->data[idx];
-// //             H->data[idx] = H->data[largest];
-// //             H->data[largest] = temp;
 
-// //             idx = largest;
-// //         } else {
-// //             break;
-// //         }
-// //     }
-// // }
+// ==========================
+// 构建哈夫曼树
+// ==========================
+HuffmanNode* buildHuffmanTree(int freq[]) {
+    MinHeap heap = { .size = 0 };
 
-// // // ==================== 删除堆顶（最大值） ====================
-// // int RemoveMax(MaxHeap *H) {
-// //     if (IsEmpty(*H)) {
-// //         printf("Heap is empty!\n");
-// //         return -1;
-// //     }
+    // 把出现过的字符生成节点并放入最小堆
+    for (int i = 0; i < MAX_CHAR; i++) {
+        if (freq[i] > 0) {
+            HuffmanNode* node = (HuffmanNode*)malloc(sizeof(HuffmanNode));
+            node->ch = (unsigned char)i;
+            node->weight = freq[i];
+            node->left = node->right = NULL;
+            heapPush(&heap, node);
+        }
+    }
 
-// //     int max_value = H->data[0];
-// //     H->data[0] = H->data[H->size - 1]; // 用最后元素替代堆顶
-// //     H->size--;
+    // 合并节点构建哈夫曼树
+    while (heap.size > 1) {
+        HuffmanNode* n1 = heapPop(&heap);
+        HuffmanNode* n2 = heapPop(&heap);
 
-// //     ShiftDown(H, 0); // 下滤调整
-// //     return max_value;
-// // }
+        HuffmanNode* newNode = (HuffmanNode*)malloc(sizeof(HuffmanNode));
+        newNode->ch = 0;
+        newNode->weight = n1->weight + n2->weight;
+        newNode->left = n1;
+        newNode->right = n2;
 
-// // // ==================== 打印堆 ====================
-// // void PrintHeap(MaxHeap H) {
-// //     printf("Heap: ");
-// //     for (int i = 0; i < H.size; i++) {
-// //         printf("%d ", H.data[i]);
-// //     }
-// //     printf("\n");
-// // }
+        heapPush(&heap, newNode);
+    }
 
-// // // ==================== 测试 ====================
-// // int main() {
-// //     MaxHeap H;
-// //     InitHeap(&H);
+    return heapPop(&heap);
+}
 
-// //     Insert(&H, 30);
-// //     Insert(&H, 10);
-// //     Insert(&H, 50);
-// //     Insert(&H, 40);
-// //     Insert(&H, 60);
 
-// //     PrintHeap(H);
+// ==========================
+// 生成哈夫曼编码（递归）
+// ==========================
+void buildCodes(HuffmanNode* root, char* code, int depth, char codes[MAX_CHAR][MAX_CHAR]) {
+    if (!root) return;
 
-// //     printf("Remove max: %d\n", RemoveMax(&H));
-// //     PrintHeap(H);
+    // 叶子节点（实际字符）
+    if (!root->left && !root->right) {
+        code[depth] = '\0';
+        strcpy(codes[root->ch], code);
+        return;
+    }
 
-// //     return 0;
-// // }
+    code[depth] = '0';
+    buildCodes(root->left, code, depth + 1, codes);
 
+    code[depth] = '1';
+    buildCodes(root->right, code, depth + 1, codes);
+}
+
+
+// ==========================
+// 解码
+// ==========================
+void decode(HuffmanNode* root, char* encoded, char* output) {
+    HuffmanNode* cur = root;
+    int outIdx = 0;
+
+    for (int i = 0; encoded[i]; i++) {
+        cur = (encoded[i] == '0') ? cur->left : cur->right;
+
+        // 到达叶子
+        if (!cur->left && !cur->right) {
+            output[outIdx++] = cur->ch;
+            cur = root;
+        }
+    }
+    output[outIdx] = '\0';
+}
+
+
+// ==========================
+// 主函数
+// ==========================
+int main() {
+    char text[] = "hello world";  // 你可以改成任意英文文章
+
+    int freq[MAX_CHAR] = {0};
+
+    // 统计频率
+    for (int i = 0; text[i]; i++) {
+        freq[(unsigned char)text[i]]++;
+    }
+
+    // 构建哈夫曼树
+    HuffmanNode* root = buildHuffmanTree(freq);
+
+    // 生成编码表
+    char codes[MAX_CHAR][MAX_CHAR] = {0};
+    char code[256];
+    buildCodes(root, code, 0, codes);
+
+    // 显示编码表
+    printf("=== Huffman Codes ===\n");
+    for (int i = 0; i < MAX_CHAR; i++) {
+        if (freq[i] > 0) {
+            if (i == ' ') printf("[space]");
+            else printf("'%c'", i);
+            printf(" : %s\n", codes[i]);
+        }
+    }
+
+    // 编码整个文本
+    char encoded[10240] = "";
+    for (int i = 0; text[i]; i++) {
+        strcat(encoded, codes[(unsigned char)text[i]]);
+    }
+
+    printf("\nEncoded: %s\n", encoded);
+
+    // 解码
+    char decoded[10240];
+    decode(root, encoded, decoded);
+
+    printf("Decoded: %s\n", decoded);
+
+    return 0;
+}

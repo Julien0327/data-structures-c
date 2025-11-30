@@ -64,3 +64,116 @@ void InsertMinHeap(MinHeap *heap, HaffmanNode *node) {
     ShiftUp(heap, heap->size);
     heap->size++;
 }
+
+HaffmanNode* PopMinHeap(MinHeap *heap) {
+    if (heap->size == 0) return NULL;
+    HaffmanNode *minNode = heap->nodes[0];
+    heap->nodes[0] = heap->nodes[heap->size - 1];
+    heap->size--;
+    ShiftDown(heap, 0);
+    return minNode;
+}
+
+HaffmanNode* CreateHaffmanNode(unsigned char data, int weight) {
+    HaffmanNode *node = (HaffmanNode *)malloc(sizeof(HaffmanNode));
+    node->data = data;
+    node->weight = weight;
+    node->left = node->right = NULL;
+    return node;
+}   
+
+// Build Haffman Tree
+HaffmanNode* BuildHaffmanTree(int freq[]) {
+    MinHeap heap;
+    heap.size = 0;
+    heap.capacity = MAX;
+    heap.nodes = (HaffmanNode **)malloc(sizeof(HaffmanNode *) * heap.capacity);
+
+    for (int i = 0; i < MAX; i++) {
+        if (freq[i] > 0) {
+            HaffmanNode *node = CreateHaffmanNode((unsigned char)i, freq[i]);
+            InsertMinHeap(&heap, node);
+        }
+    }
+
+    while (heap.size > 1) {
+        HaffmanNode *left = PopMinHeap(&heap);
+        HaffmanNode *right = PopMinHeap(&heap);
+        HaffmanNode *newNode = CreateHaffmanNode(0, left->weight + right->weight);
+        newNode->left = left;
+        newNode->right = right;
+        InsertMinHeap(&heap, newNode);
+    }
+
+    HaffmanNode *root = PopMinHeap(&heap);
+    free(heap.nodes);
+    return root;
+}
+
+void GenerateHaffmanCodes(HaffmanNode *root, char *code, int depth, char codes[MAX][MAX]) {
+    if (!root) return;
+
+    if (!root->left && !root->right) {
+        code[depth] = '\0';
+        strcpy(codes[root->data], code);
+        return;
+    }
+
+    code[depth] = '0';
+    GenerateHaffmanCodes(root->left, code, depth + 1, codes);
+
+    code[depth] = '1';
+    GenerateHaffmanCodes(root->right, code, depth + 1, codes);
+}
+
+void HaffmanDecode(HaffmanNode *root, char *encoded, char *output) {
+    HaffmanNode *current = root;
+    int outIndex = 0;
+
+    for (int i = 0; encoded[i]; i++) {
+        if (encoded[i] == '0') {
+            current = current->left;
+        } else {
+            current = current->right;
+        }
+
+        if (!current->left && !current->right) {
+            output[outIndex++] = current->data;
+            current = root;
+        }
+    }
+    output[outIndex] = '\0';
+}
+
+void FreeHaffmanTree(HaffmanNode *root) {
+    if (!root) return;
+    FreeHaffmanTree(root->left);
+    FreeHaffmanTree(root->right);
+    free(root);
+}
+
+int main() {
+    char text[] = "Hello World!"; // Sample text
+
+    int freq[MAX] = {0};
+    for (int i = 0; text[i]; i++) {
+        freq[(unsigned char)text[i]]++;
+    }
+    
+    HaffmanNode *root = BuildHaffmanTree(freq);
+    char codes[MAX][MAX] = {{0}};
+    char code[MAX];
+    GenerateHaffmanCodes(root, code, 0, codes);
+    char encoded[1000] = {0};
+    for (int i = 0; text[i]; i++) {
+        strcat(encoded, codes[(unsigned char)text[i]]);
+    }
+    printf("Encoded: %s\n", encoded);
+    char decoded[1000] = {0};
+    HaffmanDecode(root, encoded, decoded);
+    printf("Decoded: %s\n", decoded);
+
+    FreeHaffmanTree(root);
+
+    return 0;
+}
