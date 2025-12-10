@@ -70,7 +70,7 @@ int main() {
             adj[i][j] = INF;
 
     int m;
-    printf("请输入城市数 n (<= %d) 与道路数 m：\n", MAXVEX);
+    printf("Enter number of cities n (<= %d) and number of roads m:\n", MAXVEX);
     if (scanf("%d %d", &n, &m) != 2) {
         printf("Invalid input.\n");
         return 1;
@@ -80,25 +80,25 @@ int main() {
         return 1;
     }
 
-    printf("接下来输入 %d 条边：每行格式 -> 起点 终点 时间(正整数)，节点编号从 0 到 %d\n", m, n-1);
+    printf("Now enter %d edges: each line -> source destination time (positive integer), vertex ids 0..%d\n", m, n-1);
     for (int i = 0; i < m; ++i) {
         int u, v, w;
         scanf("%d %d %d", &u, &v, &w);
         if (u < 0 || u >= n || v < 0 || v >= n) {
-            fprintf(stderr, "边的节点编号非法：%d %d\n", u, v);
+            fprintf(stderr, "Invalid vertex indices for edge: %d %d\n", u, v);
             return 1;
         }
-        // 若有多条边，保留最短时间的那条
+        // If multiple edges exist between the same vertices, keep the one with the smallest time
         if (w < adj[u][v]) adj[u][v] = w;
     }
      int s, t;
-    printf("请输入起点 s 和终点 t（编号 0..%d）：\n", n-1);
+    printf("Enter start vertex s and end vertex t (ids 0..%d):\n", n-1);
     if (scanf("%d %d", &s, &t) != 2) {
-        fprintf(stderr, "输入格式错误\n");
+        fprintf(stderr, "Invalid input format\n");
         return 1;
     }
     if (s < 0 || s >= n || t < 0 || t >= n) {
-        fprintf(stderr, "起点或终点编号非法\n");
+        fprintf(stderr, "Invalid start or end vertex id\n");
         return 1;
     }
 
@@ -106,10 +106,10 @@ int main() {
     Dijkstra(s, dist, prev);
 
     if (dist[t] == INF) {
-        printf("从 %d 到 %d 无可达路径。\n", s, t);
+        printf("No reachable path from %d to %d.\n", s, t);
     } else {
-        printf("从 %d 到 %d 的最短时间为：%d\n", s, t, dist[t]);
-        printf("路径为：");
+        printf("Shortest time from %d to %d is: %d\n", s, t, dist[t]);
+        printf("Path: ");
         PrintPath(prev, s, t);
         printf("\n");
     }
